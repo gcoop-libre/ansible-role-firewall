@@ -1,0 +1,3 @@
+---
+- include: iptables-setup.yml
+  when: firewall_application == 'iptables'

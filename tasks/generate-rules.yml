@@ -1,0 +1,93 @@
+---
+- name: "IPv4 Rules: Define empty firewall_ipv4_rules"
+  set_fact:
+    firewall_ipv4_rules: {}
+  when: firewall_ipv4_configure
+
+- name: "IPv4 Rules: Add firewall_ipv4_rules_default"
+  set_fact:
+    firewall_ipv4_rules: "{% if firewall_ipv4_rules[item.group] is defined %}{{ firewall_ipv4_rules | combine({ item.group: firewall_ipv4_rules[item.group] + item.rules }) }}{% else %}{{ firewall_ipv4_rules | combine({ item.group: item.rules }) }}{% endif %}"
+  with_items: "{{ firewall_ipv4_rules_default }}"
+  when: firewall_ipv4_configure and firewall_ipv4_rules_default | length > 0
+
+- name: "IPv4 Rules: Add firewall_ipv4_rules_group"
+  set_fact:
+    firewall_ipv4_rules: "{% if not item.replace | default(False) and firewall_ipv4_rules[item.group] is defined %}{{ firewall_ipv4_rules | combine({ item.group: firewall_ipv4_rules[item.group] + item.rules }) }}{% else %}{{ firewall_ipv4_rules | combine({ item.group: item.rules }) }}{% endif %}"
+  with_items: "{{ firewall_ipv4_rules_group }}"
+  when: firewall_ipv4_configure and firewall_ipv4_rules_group | length > 0
+
+- name: "IPv4 Rules: Add firewall_ipv4_rules_host"
+  set_fact:
+    firewall_ipv4_rules: "{% if not item.replace | default(False) and firewall_ipv4_rules[item.group] is defined %}{{ firewall_ipv4_rules | combine({ item.group: firewall_ipv4_rules[item.group] + item.rules }) }}{% else %}{{ firewall_ipv4_rules | combine({ item.group: item.rules }) }}{% endif %}"
+  with_items: "{{ firewall_ipv4_rules_host }}"
+  when: firewall_ipv4_configure and firewall_ipv4_rules_host | length > 0
+
+- name: "IPv4 Chains: Define empty firewall_ipv4_chains"
+  set_fact:
+    firewall_ipv4_chains: {}
+  when: firewall_ipv4_configure
+
+- name: "IPv4 Chains: Add IPv4 chains"
+  set_fact:
+    firewall_ipv4_chains: "{{ firewall_ipv4_chains | combine({ item.table | default('filter') + '::' + item.name: item }) }}"
+  with_items: "{{ firewall_ipv4_chains_default + firewall_ipv4_chains_group + firewall_ipv4_chains_host }}"
+  when: firewall_ipv4_configure
+
+- name: "IPv4 Chains: Add firewall_ipv4_rules"
+  include: generate-ipv4-chains.yml
+  static: false
+  vars:
+    group: "{{ group_rules.key }}"
+    rules: "{{ group_rules.value }}"
+  with_dict: "{{ firewall_ipv4_rules }}"
+  loop_control:
+    loop_var: group_rules
+  when: firewall_ipv4_configure and firewall_ipv4_rules | length > 0
+
+- name: "IPv6 Rules: Define empty firewall_ipv6_rules"
+  set_fact:
+    firewall_ipv6_rules: {}
+  when: firewall_ipv6_configure
+
+- name: "IPv6 Rules: Add firewall_ipv6_rules_default"
+  set_fact:
+    firewall_ipv6_rules: "{% if firewall_ipv6_rules[item.group] is defined %}{{ firewall_ipv6_rules | combine({ item.group: firewall_ipv6_rules[item.group] + item.rules }) }}{% else %}{{ firewall_ipv6_rules | combine({ item.group: item.rules }) }}{% endif %}"
+  with_items: "{{ firewall_ipv6_rules_default }}"
+  when: firewall_ipv6_configure and firewall_ipv6_rules_default | length > 0
+
+- name: "IPv6 Rules: Add firewall_ipv6_rules_group"
+  set_fact:
+    firewall_ipv6_rules: "{% if not item.replace | default(False) and firewall_ipv6_rules[item.group] is defined %}{{ firewall_ipv6_rules | combine({ item.group: firewall_ipv6_rules[item.group] + item.rules }) }}{% else %}{{ firewall_ipv6_rules | combine({ item.group: item.rules }) }}{% endif %}"
+  with_items: "{{ firewall_ipv6_rules_group }}"
+  when: firewall_ipv6_configure and firewall_ipv6_rules_group | length > 0
+
+- name: "IPv6 Rules: Add firewall_ipv6_rules_host"
+  set_fact:
+    firewall_ipv6_rules: "{% if not item.replace | default(False) and firewall_ipv6_rules[item.group] is defined %}{{ firewall_ipv6_rules | combine({ item.group: firewall_ipv6_rules[item.group] + item.rules }) }}{% else %}{{ firewall_ipv6_rules | combine({ item.group: item.rules }) }}{% endif %}"
+  with_items: "{{ firewall_ipv6_rules_host }}"
+  when: firewall_ipv6_configure and firewall_ipv6_rules_host | length > 0
+
+- name: "IPv6 Chains: Define empty firewall_ipv6_chains"
+  set_fact:
+    firewall_ipv6_chains: {}
+  when: firewall_ipv6_configure
+
+- name: "IPv6 Chains: Add IPv6 chains"
+  set_fact:
+    firewall_ipv6_chains: "{{ firewall_ipv6_chains | combine({ item.table | default('filter') + '::' + item.name: item }) }}"
+  with_items: "{{ firewall_ipv6_chains_default + firewall_ipv6_chains_group + firewall_ipv6_chains_host }}"
+  when: firewall_ipv6_configure
+
+- name: "IPv6 Chains: Add firewall_ipv6_rules"
+  include: generate-ipv6-chains.yml
+  static: false
+  vars:
+    group: "{{ group_rules.key }}"
+    rules: "{{ group_rules.value }}"
+  with_dict: "{{ firewall_ipv6_rules }}"
+  loop_control:
+    loop_var: group_rules
+  when: firewall_ipv6_configure and firewall_ipv6_rules | length > 0
+
+- include: iptables-generate-rules.yml
+  when: firewall_application == 'iptables'
