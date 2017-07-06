@@ -1,0 +1,20 @@
+---
+dependencies: []
+
+galaxy_info:
+  author: gcoop-libre
+  description: Configure the host's firewall on Debian / Ubuntu.
+  company: gcoop Cooperativa de Software Libre
+  license: GPLv2
+  min_ansible_version: 2.2
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - networking
+    - system
+    - security
