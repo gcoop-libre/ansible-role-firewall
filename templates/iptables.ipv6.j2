@@ -1,0 +1,679 @@
+#!/bin/sh
+# {{ ansible_managed }}
+
+{% if firewall_ipv6_rules_flush %}
+# Flush rules & delete user-defined chains
+ip6tables -t filter -F
+ip6tables -t filter -X
+ip6tables -t raw -F
+ip6tables -t raw -X
+ip6tables -t nat -F
+ip6tables -t nat -X
+ip6tables -t mangle -F
+ip6tables -t mangle -X
+{% endif %}
+{% if firewall_ipv6_chains %}
+
+# Create custom chains
+{% for key, chain in firewall_ipv6_chains.iteritems() %}
+ip6tables -t {{ chain.table | default('filter') }} -N {{ chain.name }}
+{% endfor %}
+{% endif %}
+
+# Default values for chains
+ip6tables -t filter -P INPUT {{ firewall_ipv6_default_allow_input | ternary('ACCEPT', 'DROP') }}
+ip6tables -t filter -P FORWARD {{ firewall_ipv6_default_allow_forward | ternary('ACCEPT', 'DROP') }}
+ip6tables -t filter -P OUTPUT {{ firewall_ipv6_default_allow_output | ternary('ACCEPT', 'DROP') }}
+{% if firewall_ipv6_input_disallow_invalid %}
+
+# Disallow invalid connections
+ip6tables -t filter -A INPUT -m conntrack --ctstate INVALID -j DROP
+{% endif %}
+{% if firewall_ipv6_input_allow_localhost %}
+
+# Accept traffic from loopback interface (localhost)
+ip6tables -t filter -A INPUT -i lo -s ::1/128 -d ::1/128 -j ACCEPT
+{% endif %}
+{% if firewall_ipv6_input_allow_icmp_ping %}
+
+# Accept icmp ping requests
+ip6tables -t filter -A INPUT -p icmpv6 --icmpv6-type echo-request -j ACCEPT
+{% endif %}
+{% if firewall_ipv6_input_allow_established %}
+
+# Allow established connections
+ip6tables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+{% endif %}
+{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% set rule_number = [0] %}
+{% for rule in rules %}
+{% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'input' %}
+{% if rule_number[0] == 0 %}
+
+# Group: {{ group }}
+{% endif %}
+{% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
+## Rule Nr. {{ rule_number[0] }}
+{% if rule.target_custom | default('') | length > 0 %}
+{% set rule_target = rule.target_custom %}
+{% elif rule.target_drop | default(False) %}
+{% set rule_target = 'DROP' %}
+{% elif rule.target_queue | default(False) %}
+{% set rule_target = 'QUEUE' %}
+{% elif rule.target_return | default(False) %}
+{% set rule_target = 'RETURN' %}
+{% elif rule.target_reject | default(False) %}
+{% set rule_target = 'REJECT' %}
+{% elif rule.target_log | default(False) %}
+{% set rule_target = 'LOG' %}
+{% elif rule.target_ulog | default(False) %}
+{% set rule_target = 'ULOG' %}
+{% else %}
+{% set rule_target = 'ACCEPT' %}
+{% endif %}
+ip6tables -t filter -A {{ rule.chain | upper -}}
+{% if rule.interface_in is defined %} -i {{ rule.interface_in }}{% endif %}
+{% if rule.interface_out is defined %} -o {{ rule.interface_out }}{% endif %}
+{% if rule.source is defined %} -s {{ rule.source }}{% endif %}
+{% if rule.sources is defined %} -s {{ rule.sources | join(',') }}{% endif %}
+{% if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+{% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
+{% if rule.protocol is defined %}
+ -p {{ rule.protocol | lower -}}
+{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
+{% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+{% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+{% if rule.source_ports is defined or rule.destination_ports is defined %} -m multiport{% endif %}
+{% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
+{% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
+{% endif %}
+{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
+{% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
+{% if rule.limit_burst is defined %} --limit-burst_burst {{ rule.limit_burst }}{% endif %}
+{% endif %}
+{% if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+ -j {{ rule_target -}}
+{% if rule.target_reject | default(False) %}
+{% if rule.target_reject_with is defined %} --reject-with {{ rule.target_reject_with }}{% endif %}
+{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.target_log_level is defined %} --log-level {{ rule.target_log_level }}{% endif %}
+{% if rule.target_log_prefix is defined %} --log-prefix "{{ rule.target_log_prefix }}"{% endif %}
+{% if rule.target_log_tcp_sequence | default(False) %} --log-tcp-sequence{% endif %}
+{% if rule.target_log_tcp_options | default(False) %} --log-tcp-options{% endif %}
+{% if rule.target_log_ip_options | default(False) %} --log-ip-options{% endif %}
+{% endif %}
+{% if rule.target_ulog | default(False) %}
+{% if rule.target_ulog_nlgroup is defined %} --ulog-nlgroup {{ rule.target_ulog_nlgroup }}{% endif %}
+{% if rule.target_ulog_prefix is defined %} --ulog-prefix "{{ rule.target_ulog_prefix }}"{% endif %}
+{% if rule.target_ulog_cprange is defined %} --ulog-cprange {{ rule.target_ulog_cprange }}{% endif %}
+{% if rule.target_ulog_qthreshold is defined %} --ulog-qthreshold {{ rule.target_ulog_qthreshold }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% if firewall_ipv6_input_log_disallowed %}
+
+# Log other incoming requests (all of which are dropped) at 15/minute max.
+ip6tables -t filter -A INPUT -m limit --limit 15/minute -j LOG --log-level 7 --log-prefix "Dropped by firewall: "
+{% endif %}
+{% if firewall_ipv6_forward_allow_established %}
+
+# Allow established connections
+ip6tables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+{% endif %}
+{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% set rule_number = [0] %}
+{% for rule in rules %}
+{% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'forward' %}
+{% if rule_number[0] == 0 %}
+
+# Group: {{ group }}
+{% endif %}
+{% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
+## Rule Nr. {{ rule_number[0] }}
+{% if rule.target_custom | default('') | length > 0 %}
+{% set rule_target = rule.target_custom %}
+{% elif rule.target_drop | default(False) %}
+{% set rule_target = 'DROP' %}
+{% elif rule.target_queue | default(False) %}
+{% set rule_target = 'QUEUE' %}
+{% elif rule.target_return | default(False) %}
+{% set rule_target = 'RETURN' %}
+{% elif rule.target_reject | default(False) %}
+{% set rule_target = 'REJECT' %}
+{% elif rule.target_log | default(False) %}
+{% set rule_target = 'LOG' %}
+{% elif rule.target_ulog | default(False) %}
+{% set rule_target = 'ULOG' %}
+{% else %}
+{% set rule_target = 'ACCEPT' %}
+{% endif %}
+ip6tables -t filter -A {{ rule.chain | upper -}}
+{% if rule.interface_in is defined %} -i {{ rule.interface_in }}{% endif %}
+{% if rule.interface_out is defined %} -o {{ rule.interface_out }}{% endif %}
+{% if rule.source is defined %} -s {{ rule.source }}{% endif %}
+{% if rule.sources is defined %} -s {{ rule.sources | join(',') }}{% endif %}
+{% if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+{% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
+{% if rule.protocol is defined %}
+ -p {{ rule.protocol | lower -}}
+{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
+{% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+{% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+{% if rule.source_ports is defined or rule.destination_ports is defined %} -m multiport{% endif %}
+{% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
+{% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
+{% endif %}
+{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
+{% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
+{% if rule.limit_burst is defined %} --limit-burst_burst {{ rule.limit_burst }}{% endif %}
+{% endif %}
+{% if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+ -j {{ rule_target -}}
+{% if rule.target_reject | default(False) %}
+{% if rule.target_reject_with is defined %} --reject-with {{ rule.target_reject_with }}{% endif %}
+{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.target_log_level is defined %} --log-level {{ rule.target_log_level }}{% endif %}
+{% if rule.target_log_prefix is defined %} --log-prefix "{{ rule.target_log_prefix }}"{% endif %}
+{% if rule.target_log_tcp_sequence | default(False) %} --log-tcp-sequence{% endif %}
+{% if rule.target_log_tcp_options | default(False) %} --log-tcp-options{% endif %}
+{% if rule.target_log_ip_options | default(False) %} --log-ip-options{% endif %}
+{% endif %}
+{% if rule.target_ulog | default(False) %}
+{% if rule.target_ulog_nlgroup is defined %} --ulog-nlgroup {{ rule.target_ulog_nlgroup }}{% endif %}
+{% if rule.target_ulog_prefix is defined %} --ulog-prefix "{{ rule.target_ulog_prefix }}"{% endif %}
+{% if rule.target_ulog_cprange is defined %} --ulog-cprange {{ rule.target_ulog_cprange }}{% endif %}
+{% if rule.target_ulog_qthreshold is defined %} --ulog-qthreshold {{ rule.target_ulog_qthreshold }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% if firewall_ipv6_output_allow_icmp_ping %}
+
+# Accept icmp ping requests
+ip6tables -t filter -A OUTPUT -p icmpv6 --icmpv6-type echo-reply -j ACCEPT
+{% endif %}
+{% if firewall_ipv6_output_disallow_icmp_redirect %}
+
+# Drop icmp redirect responses
+ip6tables -t filter -A OUTPUT -p icmpv6 --icmpv6-type redirect -j DROP
+{% endif %}
+{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% set rule_number = [0] %}
+{% for rule in rules %}
+{% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'output' %}
+{% if rule_number[0] == 0 %}
+
+# Group: {{ group }}
+{% endif %}
+{% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
+## Rule Nr. {{ rule_number[0] }}
+{% if rule.target_custom | default('') | length > 0 %}
+{% set rule_target = rule.target_custom %}
+{% elif rule.target_drop | default(False) %}
+{% set rule_target = 'DROP' %}
+{% elif rule.target_queue | default(False) %}
+{% set rule_target = 'QUEUE' %}
+{% elif rule.target_return | default(False) %}
+{% set rule_target = 'RETURN' %}
+{% elif rule.target_reject | default(False) %}
+{% set rule_target = 'REJECT' %}
+{% elif rule.target_log | default(False) %}
+{% set rule_target = 'LOG' %}
+{% elif rule.target_ulog | default(False) %}
+{% set rule_target = 'ULOG' %}
+{% else %}
+{% set rule_target = 'ACCEPT' %}
+{% endif %}
+ip6tables -t filter -A {{ rule.chain | upper -}}
+{% if rule.interface_in is defined %} -i {{ rule.interface_in }}{% endif %}
+{% if rule.interface_out is defined %} -o {{ rule.interface_out }}{% endif %}
+{% if rule.source is defined %} -s {{ rule.source }}{% endif %}
+{% if rule.sources is defined %} -s {{ rule.sources | join(',') }}{% endif %}
+{% if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+{% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
+{% if rule.protocol is defined %}
+ -p {{ rule.protocol | lower -}}
+{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
+{% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+{% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+{% if rule.source_ports is defined or rule.destination_ports is defined %} -m multiport{% endif %}
+{% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
+{% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
+{% endif %}
+{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
+{% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
+{% if rule.limit_burst is defined %} --limit-burst_burst {{ rule.limit_burst }}{% endif %}
+{% endif %}
+{% if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+ -j {{ rule_target -}}
+{% if rule.target_reject | default(False) %}
+{% if rule.target_reject_with is defined %} --reject-with {{ rule.target_reject_with }}{% endif %}
+{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.target_log_level is defined %} --log-level {{ rule.target_log_level }}{% endif %}
+{% if rule.target_log_prefix is defined %} --log-prefix "{{ rule.target_log_prefix }}"{% endif %}
+{% if rule.target_log_tcp_sequence | default(False) %} --log-tcp-sequence{% endif %}
+{% if rule.target_log_tcp_options | default(False) %} --log-tcp-options{% endif %}
+{% if rule.target_log_ip_options | default(False) %} --log-ip-options{% endif %}
+{% endif %}
+{% if rule.target_ulog | default(False) %}
+{% if rule.target_ulog_nlgroup is defined %} --ulog-nlgroup {{ rule.target_ulog_nlgroup }}{% endif %}
+{% if rule.target_ulog_prefix is defined %} --ulog-prefix "{{ rule.target_ulog_prefix }}"{% endif %}
+{% if rule.target_ulog_cprange is defined %} --ulog-cprange {{ rule.target_ulog_cprange }}{% endif %}
+{% if rule.target_ulog_qthreshold is defined %} --ulog-qthreshold {{ rule.target_ulog_qthreshold }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% set rule_number = [0] %}
+{% for rule in rules %}
+{% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower not in ['input', 'forward', 'output'] %}
+{% if rule_number[0] == 0 %}
+
+# Group: {{ group }}
+{% endif %}
+{% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
+## Rule Nr. {{ rule_number[0] }}
+{% if rule.target_custom | default('') | length > 0 %}
+{% set rule_target = rule.target_custom %}
+{% elif rule.target_drop | default(False) %}
+{% set rule_target = 'DROP' %}
+{% elif rule.target_queue | default(False) %}
+{% set rule_target = 'QUEUE' %}
+{% elif rule.target_return | default(False) %}
+{% set rule_target = 'RETURN' %}
+{% elif rule.target_reject | default(False) %}
+{% set rule_target = 'REJECT' %}
+{% elif rule.target_log | default(False) %}
+{% set rule_target = 'LOG' %}
+{% elif rule.target_ulog | default(False) %}
+{% set rule_target = 'ULOG' %}
+{% else %}
+{% set rule_target = 'ACCEPT' %}
+{% endif %}
+ip6tables -t filter -A {{ rule.chain -}}
+{% if rule.interface_in is defined %} -i {{ rule.interface_in }}{% endif %}
+{% if rule.interface_out is defined %} -o {{ rule.interface_out }}{% endif %}
+{% if rule.source is defined %} -s {{ rule.source }}{% endif %}
+{% if rule.sources is defined %} -s {{ rule.sources | join(',') }}{% endif %}
+{% if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+{% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
+{% if rule.protocol is defined %}
+ -p {{ rule.protocol | lower -}}
+{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
+{% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+{% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+{% if rule.source_ports is defined or rule.destination_ports is defined %} -m multiport{% endif %}
+{% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
+{% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
+{% endif %}
+{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
+{% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
+{% if rule.limit_burst is defined %} --limit-burst_burst {{ rule.limit_burst }}{% endif %}
+{% endif %}
+{% if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+ -j {{ rule_target -}}
+{% if rule.target_reject | default(False) %}
+{% if rule.target_reject_with is defined %} --reject-with {{ rule.target_reject_with }}{% endif %}
+{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.target_log_level is defined %} --log-level {{ rule.target_log_level }}{% endif %}
+{% if rule.target_log_prefix is defined %} --log-prefix "{{ rule.target_log_prefix }}"{% endif %}
+{% if rule.target_log_tcp_sequence | default(False) %} --log-tcp-sequence{% endif %}
+{% if rule.target_log_tcp_options | default(False) %} --log-tcp-options{% endif %}
+{% if rule.target_log_ip_options | default(False) %} --log-ip-options{% endif %}
+{% endif %}
+{% if rule.target_ulog | default(False) %}
+{% if rule.target_ulog_nlgroup is defined %} --ulog-nlgroup {{ rule.target_ulog_nlgroup }}{% endif %}
+{% if rule.target_ulog_prefix is defined %} --ulog-prefix "{{ rule.target_ulog_prefix }}"{% endif %}
+{% if rule.target_ulog_cprange is defined %} --ulog-cprange {{ rule.target_ulog_cprange }}{% endif %}
+{% if rule.target_ulog_qthreshold is defined %} --ulog-qthreshold {{ rule.target_ulog_qthreshold }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+# Default values for NAT chains
+ip6tables -t nat -P PREROUTING ACCEPT
+ip6tables -t nat -P OUTPUT ACCEPT
+ip6tables -t nat -P POSTROUTING ACCEPT
+{% if firewall_ipv6_nat_prerouting_allow_established %}
+
+# Allow established connections
+ip6tables -t nat -A PREROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+{% endif %}
+{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% set rule_number = [0] %}
+{% for rule in rules %}
+{% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'prerouting' %}
+{% if rule_number[0] == 0 %}
+
+# Group: {{ group }}
+{% endif %}
+{% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
+## Rule Nr. {{ rule_number[0] }}
+{% if rule.target_custom | default('') | length > 0 %}
+{% set rule_target = rule.target_custom %}
+{% elif rule.target_dnat | default(False) %}
+{% set rule_target = 'DNAT' %}
+{% elif rule.target_redirect | default(False) %}
+{% set rule_target = 'REDIRECT' %}
+{% elif rule.target_queue | default(False) %}
+{% set rule_target = 'QUEUE' %}
+{% elif rule.target_return | default(False) %}
+{% set rule_target = 'RETURN' %}
+{% elif rule.target_log | default(False) %}
+{% set rule_target = 'LOG' %}
+{% elif rule.target_ulog | default(False) %}
+{% set rule_target = 'ULOG' %}
+{% else %}
+{% set rule_target = 'ACCEPT' %}
+{% endif %}
+ip6tables -t nat -A {{ rule.chain | upper -}}
+{% if rule.interface_in is defined %} -i {{ rule.interface_in }}{% endif %}
+{% if rule.interface_out is defined %} -o {{ rule.interface_out }}{% endif %}
+{% if rule.source is defined %} -s {{ rule.source }}{% endif %}
+{% if rule.sources is defined %} -s {{ rule.sources | join(',') }}{% endif %}
+{% if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+{% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
+{% if rule.protocol is defined %}
+ -p {{ rule.protocol | lower -}}
+{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
+{% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+{% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+{% if rule.source_ports is defined or rule.destination_ports is defined %} -m multiport{% endif %}
+{% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
+{% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
+{% endif %}
+{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
+{% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
+{% if rule.limit_burst is defined %} --limit-burst_burst {{ rule.limit_burst }}{% endif %}
+{% endif %}
+{% if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+ -j {{ rule_target -}}
+{% if rule.target_dnat | default(False) %}
+{% if rule.target_dnat_destination is defined %} --to-destination {{ rule.target_dnat_destination }}{% endif %}
+{% endif %}
+{% if rule.target_redirect | default(False) %}
+{% if rule.target_redirect_ports is defined %} --to-ports {{ rule.target_redirect_ports }}{% endif %}
+{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.target_log_level is defined %} --log-level {{ rule.target_log_level }}{% endif %}
+{% if rule.target_log_prefix is defined %} --log-prefix "{{ rule.target_log_prefix }}"{% endif %}
+{% if rule.target_log_tcp_sequence | default(False) %} --log-tcp-sequence{% endif %}
+{% if rule.target_log_tcp_options | default(False) %} --log-tcp-options{% endif %}
+{% if rule.target_log_ip_options | default(False) %} --log-ip-options{% endif %}
+{% endif %}
+{% if rule.target_ulog | default(False) %}
+{% if rule.target_ulog_nlgroup is defined %} --ulog-nlgroup {{ rule.target_ulog_nlgroup }}{% endif %}
+{% if rule.target_ulog_prefix is defined %} --ulog-prefix "{{ rule.target_ulog_prefix }}"{% endif %}
+{% if rule.target_ulog_cprange is defined %} --ulog-cprange {{ rule.target_ulog_cprange }}{% endif %}
+{% if rule.target_ulog_qthreshold is defined %} --ulog-qthreshold {{ rule.target_ulog_qthreshold }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% set rule_number = [0] %}
+{% for rule in rules %}
+{% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'output' %}
+{% if rule_number[0] == 0 %}
+
+# Group: {{ group }}
+{% endif %}
+{% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
+## Rule Nr. {{ rule_number[0] }}
+{% if rule.target_custom | default('') | length > 0 %}
+{% set rule_target = rule.target_custom %}
+{% elif rule.target_dnat | default(False) %}
+{% set rule_target = 'DNAT' %}
+{% elif rule.target_redirect | default(False) %}
+{% set rule_target = 'REDIRECT' %}
+{% elif rule.target_queue | default(False) %}
+{% set rule_target = 'QUEUE' %}
+{% elif rule.target_return | default(False) %}
+{% set rule_target = 'RETURN' %}
+{% elif rule.target_log | default(False) %}
+{% set rule_target = 'LOG' %}
+{% elif rule.target_ulog | default(False) %}
+{% set rule_target = 'ULOG' %}
+{% else %}
+{% set rule_target = 'ACCEPT' %}
+{% endif %}
+ip6tables -t nat -A {{ rule.chain | upper -}}
+{% if rule.interface_in is defined %} -i {{ rule.interface_in }}{% endif %}
+{% if rule.interface_out is defined %} -o {{ rule.interface_out }}{% endif %}
+{% if rule.source is defined %} -s {{ rule.source }}{% endif %}
+{% if rule.sources is defined %} -s {{ rule.sources | join(',') }}{% endif %}
+{% if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+{% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
+{% if rule.protocol is defined %}
+ -p {{ rule.protocol | lower -}}
+{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
+{% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+{% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+{% if rule.source_ports is defined or rule.destination_ports is defined %} -m multiport{% endif %}
+{% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
+{% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
+{% endif %}
+{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
+{% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
+{% if rule.limit_burst is defined %} --limit-burst_burst {{ rule.limit_burst }}{% endif %}
+{% endif %}
+{% if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+ -j {{ rule_target -}}
+{% if rule.target_dnat | default(False) %}
+{% if rule.target_dnat_destination is defined %} --to-destination {{ rule.target_dnat_destination }}{% endif %}
+{% endif %}
+{% if rule.target_redirect | default(False) %}
+{% if rule.target_redirect_ports is defined %} --to-ports {{ rule.target_redirect_ports }}{% endif %}
+{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.target_log_level is defined %} --log-level {{ rule.target_log_level }}{% endif %}
+{% if rule.target_log_prefix is defined %} --log-prefix "{{ rule.target_log_prefix }}"{% endif %}
+{% if rule.target_log_tcp_sequence | default(False) %} --log-tcp-sequence{% endif %}
+{% if rule.target_log_tcp_options | default(False) %} --log-tcp-options{% endif %}
+{% if rule.target_log_ip_options | default(False) %} --log-ip-options{% endif %}
+{% endif %}
+{% if rule.target_ulog | default(False) %}
+{% if rule.target_ulog_nlgroup is defined %} --ulog-nlgroup {{ rule.target_ulog_nlgroup }}{% endif %}
+{% if rule.target_ulog_prefix is defined %} --ulog-prefix "{{ rule.target_ulog_prefix }}"{% endif %}
+{% if rule.target_ulog_cprange is defined %} --ulog-cprange {{ rule.target_ulog_cprange }}{% endif %}
+{% if rule.target_ulog_qthreshold is defined %} --ulog-qthreshold {{ rule.target_ulog_qthreshold }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% if firewall_ipv6_nat_postrouting_allow_established %}
+
+# Allow established connections
+ip6tables -t nat -A POSTROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+{% endif %}
+{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% set rule_number = [0] %}
+{% for rule in rules %}
+{% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'postrouting' %}
+{% if rule_number[0] == 0 %}
+
+# Group: {{ group }}
+{% endif %}
+{% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
+## Rule Nr. {{ rule_number[0] }}
+{% if rule.target_custom | default('') | length > 0 %}
+{% set rule_target = rule.target_custom %}
+{% elif rule.target_masquerade | default(False) %}
+{% set rule_target = 'MASQUERADE' %}
+{% elif rule.target_snat | default(False) %}
+{% set rule_target = 'SNAT' %}
+{% elif rule.target_queue | default(False) %}
+{% set rule_target = 'QUEUE' %}
+{% elif rule.target_return | default(False) %}
+{% set rule_target = 'RETURN' %}
+{% elif rule.target_log | default(False) %}
+{% set rule_target = 'LOG' %}
+{% elif rule.target_ulog | default(False) %}
+{% set rule_target = 'ULOG' %}
+{% else %}
+{% set rule_target = 'ACCEPT' %}
+{% endif %}
+ip6tables -t nat -A {{ rule.chain | upper -}}
+{% if rule.interface_in is defined %} -i {{ rule.interface_in }}{% endif %}
+{% if rule.interface_out is defined %} -o {{ rule.interface_out }}{% endif %}
+{% if rule.source is defined %} -s {{ rule.source }}{% endif %}
+{% if rule.sources is defined %} -s {{ rule.sources | join(',') }}{% endif %}
+{% if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+{% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
+{% if rule.protocol is defined %}
+ -p {{ rule.protocol | lower -}}
+{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
+{% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+{% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+{% if rule.source_ports is defined or rule.destination_ports is defined %} -m multiport{% endif %}
+{% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
+{% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
+{% endif %}
+{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
+{% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
+{% if rule.limit_burst is defined %} --limit-burst_burst {{ rule.limit_burst }}{% endif %}
+{% endif %}
+{% if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+ -j {{ rule_target -}}
+{% if rule.target_masquerade | default(False) %}
+{% if rule.target_masquerade_ports is defined %} --to-ports {{ rule.target_masquerade_ports }}{% endif %}
+{% endif %}
+{% if rule.target_snat | default(False) %}
+{% if rule.target_snat_source is defined %} --to-source {{ rule.target_snat_source }}{% endif %}
+{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.target_log_level is defined %} --log-level {{ rule.target_log_level }}{% endif %}
+{% if rule.target_log_prefix is defined %} --log-prefix "{{ rule.target_log_prefix }}"{% endif %}
+{% if rule.target_log_tcp_sequence | default(False) %} --log-tcp-sequence{% endif %}
+{% if rule.target_log_tcp_options | default(False) %} --log-tcp-options{% endif %}
+{% if rule.target_log_ip_options | default(False) %} --log-ip-options{% endif %}
+{% endif %}
+{% if rule.target_ulog | default(False) %}
+{% if rule.target_ulog_nlgroup is defined %} --ulog-nlgroup {{ rule.target_ulog_nlgroup }}{% endif %}
+{% if rule.target_ulog_prefix is defined %} --ulog-prefix "{{ rule.target_ulog_prefix }}"{% endif %}
+{% if rule.target_ulog_cprange is defined %} --ulog-cprange {{ rule.target_ulog_cprange }}{% endif %}
+{% if rule.target_ulog_qthreshold is defined %} --ulog-qthreshold {{ rule.target_ulog_qthreshold }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% set rule_number = [0] %}
+{% for rule in rules %}
+{% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower not in ['prerouting', 'output', 'postrouting'] %}
+{% if rule_number[0] == 0 %}
+
+# Group: {{ group }}
+{% endif %}
+{% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
+## Rule Nr. {{ rule_number[0] }}
+{% if rule.target_custom | default('') | length > 0 %}
+{% set rule_target = rule.target_custom %}
+{% elif rule.target_dnat | default(False) %}
+{% set rule_target = 'DNAT' %}
+{% elif rule.target_redirect | default(False) %}
+{% set rule_target = 'REDIRECT' %}
+{% elif rule.target_masquerade | default(False) %}
+{% set rule_target = 'MASQUERADE' %}
+{% elif rule.target_snat | default(False) %}
+{% set rule_target = 'SNAT' %}
+{% elif rule.target_queue | default(False) %}
+{% set rule_target = 'QUEUE' %}
+{% elif rule.target_return | default(False) %}
+{% set rule_target = 'RETURN' %}
+{% elif rule.target_log | default(False) %}
+{% set rule_target = 'LOG' %}
+{% elif rule.target_ulog | default(False) %}
+{% set rule_target = 'ULOG' %}
+{% else %}
+{% set rule_target = 'ACCEPT' %}
+{% endif %}
+ip6tables -t nat -A {{ rule.chain -}}
+{% if rule.interface_in is defined %} -i {{ rule.interface_in }}{% endif %}
+{% if rule.interface_out is defined %} -o {{ rule.interface_out }}{% endif %}
+{% if rule.source is defined %} -s {{ rule.source }}{% endif %}
+{% if rule.sources is defined %} -s {{ rule.sources | join(',') }}{% endif %}
+{% if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+{% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
+{% if rule.protocol is defined %}
+ -p {{ rule.protocol | lower -}}
+{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
+{% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+{% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+{% if rule.source_ports is defined or rule.destination_ports is defined %} -m multiport{% endif %}
+{% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
+{% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
+{% endif %}
+{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
+{% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
+{% if rule.limit_burst is defined %} --limit-burst_burst {{ rule.limit_burst }}{% endif %}
+{% endif %}
+{% if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+ -j {{ rule_target -}}
+{% if rule.target_dnat | default(False) %}
+{% if rule.target_dnat_destination is defined %} --to-destination {{ rule.target_dnat_destination }}{% endif %}
+{% endif %}
+{% if rule.target_redirect | default(False) %}
+{% if rule.target_redirect_ports is defined %} --to-ports {{ rule.target_redirect_ports }}{% endif %}
+{% endif %}
+{% if rule.target_masquerade | default(False) %}
+{% if rule.target_masquerade_ports is defined %} --to-ports {{ rule.target_masquerade_ports }}{% endif %}
+{% endif %}
+{% if rule.target_snat | default(False) %}
+{% if rule.target_snat_source is defined %} --to-source {{ rule.target_snat_source }}{% endif %}
+{% endif %}
+{% if rule.target_log | default(False) %}
+{% if rule.target_log_level is defined %} --log-level {{ rule.target_log_level }}{% endif %}
+{% if rule.target_log_prefix is defined %} --log-prefix "{{ rule.target_log_prefix }}"{% endif %}
+{% if rule.target_log_tcp_sequence | default(False) %} --log-tcp-sequence{% endif %}
+{% if rule.target_log_tcp_options | default(False) %} --log-tcp-options{% endif %}
+{% if rule.target_log_ip_options | default(False) %} --log-ip-options{% endif %}
+{% endif %}
+{% if rule.target_ulog | default(False) %}
+{% if rule.target_ulog_nlgroup is defined %} --ulog-nlgroup {{ rule.target_ulog_nlgroup }}{% endif %}
+{% if rule.target_ulog_prefix is defined %} --ulog-prefix "{{ rule.target_ulog_prefix }}"{% endif %}
+{% if rule.target_ulog_cprange is defined %} --ulog-cprange {{ rule.target_ulog_cprange }}{% endif %}
+{% if rule.target_ulog_qthreshold is defined %} --ulog-qthreshold {{ rule.target_ulog_qthreshold }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
