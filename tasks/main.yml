@@ -1,0 +1,4 @@
+---
+- include: setup.yml
+
+- include: generate-rules.yml

@@ -1,0 +1,163 @@
+---
+firewall_ipv4_configure: True
+firewall_ipv6_configure: False
+
+firewall_ipv4_rules_flush: True
+firewall_ipv4_default_allow_input: False
+firewall_ipv4_default_allow_forward: False
+firewall_ipv4_default_allow_output: True
+firewall_ipv4_input_disallow_invalid: True
+firewall_ipv4_input_allow_localhost: True
+firewall_ipv4_input_allow_icmp_ping: False
+firewall_ipv4_input_allow_established: True
+firewall_ipv4_input_log_disallowed: True
+firewall_ipv4_forward_allow_established: False
+firewall_ipv4_output_allow_icmp_ping: False
+firewall_ipv4_output_disallow_icmp_redirect: True
+firewall_ipv4_nat_prerouting_allow_established: False
+firewall_ipv4_nat_postrouting_allow_established: False
+firewall_ipv4_chains_default: []
+firewall_ipv4_chains_group: []
+firewall_ipv4_chains_host: []
+# Available properties
+# - name: custom_chain
+#   table: filter (default)
+firewall_ipv4_rules_default: []
+firewall_ipv4_rules_group: []
+firewall_ipv4_rules_host: []
+# Available properties
+# - group: Name of the rule group
+#   replace: False (default)
+#   rules:
+#     - table: filter (default)
+#       chain: input
+#       interface_in: eth0
+#       interface_out: eth0
+#       protocol: tcp
+#       icmp_type: echo-request
+#       source: 0.0.0.0/0
+#       sources:
+#         - 127.0.0.1
+#         - 192.168.1.1
+#       source_port: 2048
+#       source_ports:
+#         - 2000
+#         - 2001
+#       destination: 0.0.0.0/0
+#       destinations:
+#         - 127.0.0.1
+#         - 192.168.1.1
+#       destination_port: 22
+#       destination_ports:
+#         - 80
+#         - 443
+#       state_new: True (default)
+#       limit: 5/m
+#       limit_burst: 10
+#       target_accept: True (default)
+#       target_custom: custom_chain
+#       target_dnat: False
+#       target_dnat_destination: 192.168.10.1
+#       target_drop: False
+#       target_log: False
+#       target_log_ip_options: False
+#       target_log_level: debug
+#       target_log_prefix: INPUT packets
+#       target_log_tcp_options: False
+#       target_log_tcp_sequence: False
+#       target_masquerade: False
+#       target_masquerade_ports: 1000-1500
+#       target_queue: False
+#       target_redirect: False
+#       target_redirect_ports: 1000-1500
+#       target_reject: False
+#       target_reject_with: icmp-host-prohibited
+#       target_return: False
+#       target_snat: False
+#       target_snat_source: 192.168.10.1
+#       target_ulog: False
+#       target_ulog_cprange: 100
+#       target_ulog_nlgroup: 2
+#       target_ulog_prefix: SSH connection attempt
+#       target_ulog_qthreshold: 10
+#       comment: OpenSSH 22/tcp
+
+firewall_ipv6_rules_flush: True
+firewall_ipv6_default_allow_input: False
+firewall_ipv6_default_allow_forward: False
+firewall_ipv6_default_allow_output: True
+firewall_ipv6_input_disallow_invalid: True
+firewall_ipv6_input_allow_localhost: True
+firewall_ipv6_input_allow_icmp_ping: False
+firewall_ipv6_input_allow_established: True
+firewall_ipv6_input_log_disallowed: True
+firewall_ipv6_forward_allow_established: False
+firewall_ipv6_output_allow_icmp_ping: False
+firewall_ipv6_output_disallow_icmp_redirect: True
+firewall_ipv6_nat_prerouting_allow_established: False
+firewall_ipv6_nat_postrouting_allow_established: False
+firewall_ipv6_chains_default: []
+firewall_ipv6_chains_group: []
+firewall_ipv6_chains_host: []
+# Available properties
+# - name: custom_chain
+#   table: filter (default)
+firewall_ipv6_rules_default: []
+firewall_ipv6_rules_group: []
+firewall_ipv6_rules_host: []
+# Available properties
+# - group: Name of the rule group
+#   replace: False (default)
+#   rules:
+#     - table: filter (default)
+#       chain: input
+#       interface_in: eth0
+#       interface_out: eth0
+#       protocol: tcp
+#       icmp_type: echo-request
+#       source: "::/0"
+#       sources:
+#         - "::1/128"
+#         - "2001:db8::2:1"
+#       source_port: 2048
+#       source_ports:
+#         - 2000
+#         - 2001
+#       destination: "::/0"
+#       destinations:
+#         - "::1/128"
+#         - "2001:db8::2:1"
+#       destination_port: 22
+#       destination_ports:
+#         - 80
+#         - 443
+#       state_new: True (default)
+#       limit: 5/m
+#       limit_burst: 10
+#       target_accept: True (default)
+#       target_custom: custom_chain
+#       target_dnat: False
+#       target_dnat_destination: "2001:db8::2:1"
+#       target_drop: False
+#       target_log: False
+#       target_log_ip_options: False
+#       target_log_level: debug
+#       target_log_prefix: INPUT packets
+#       target_log_tcp_options: False
+#       target_log_tcp_sequence: False
+#       target_masquerade: False
+#       target_masquerade_ports: 1000-1500
+#       target_queue: False
+#       target_redirect: False
+#       target_redirect_ports: 1000-1500
+#       target_reject: False
+#       target_reject_with: icmp-host-prohibited
+#       target_return: False
+#       target_snat: False
+#       target_snat_source: "2001:db8::2:1"
+#       target_ulog: False
+#       target_ulog_cprange: 100
+#       target_ulog_nlgroup: 2
+#       target_ulog_prefix: SSH connection attempt
+#       target_ulog_qthreshold: 10
+#       comment: OpenSSH 22/tcp

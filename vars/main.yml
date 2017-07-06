@@ -1,0 +1,5 @@
+---
+firewall_application: iptables
+
+firewall_ipv4_generated_script: /etc/firewall.ipv4.generated
+firewall_ipv6_generated_script: /etc/firewall.ipv6.generated

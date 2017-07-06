@@ -1,0 +1,11 @@
+---
+- name: load ipv4 rules
+  command: "{{ firewall_ipv4_generated_script }}"
+  notify: persist rules
+
+- name: load ipv6 rules
+  command: "{{ firewall_ipv6_generated_script }}"
+  notify: persist rules
+
+- name: persist rules
+  command: netfilter-persistent save

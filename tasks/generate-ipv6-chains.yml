@@ -1,0 +1,6 @@
+---
+- name: "IPv4 Chains: Add firewall_ipv6_rules for {{ group }}"
+  set_fact:
+    firewall_ipv6_chains: "{{ firewall_ipv6_chains | combine({ item.table | default('filter') + '::' + item.chain: { 'table': item.table | default('filter'), 'name': item.chain } }) }}"
+  with_items: "{{ rules }}"
+  when: (item.table | default('filter') == 'filter' and item.chain | lower not in ['input', 'forward', 'output']) or (item.table | default('filter') == 'nat' and item.chain | lower not in ['prerouting', 'output', 'postrouting'])

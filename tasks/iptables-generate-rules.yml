@@ -1,0 +1,20 @@
+---
+- name: Generate ipv4 rules.
+  template:
+    src: iptables.ipv4.j2
+    dest: "{{ firewall_ipv4_generated_script }}"
+    owner: root
+    group: root
+    mode: '0750'
+  when: firewall_ipv4_configure
+  notify: load ipv4 rules
+
+- name: Generate ipv6 rules.
+  template:
+    src: iptables.ipv6.j2
+    dest: "{{ firewall_ipv6_generated_script }}"
+    owner: root
+    group: root
+    mode: '0750'
+  when: firewall_ipv6_configure
+  notify: load ipv6 rules
