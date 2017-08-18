@@ -207,7 +207,7 @@ Each variable is a list of dictionaries, which should have the structure showed 
 * `table`: Table for the rule. `filter`, `nat`, `filter`, `mangle`, etc. Default: `filter`.
 * `chain`: Chain where the rule will be evaluated. `input`, `output`, `postrouting`, custom chain.
 * `interface_in`: Match rule against the network interface through which the packet arrives.
-* `interface_out`: Match rule against the network interface through which the packet exists the host.r
+* `interface_out`: Match rule against the network interface through which the packet exists the host.
 * `protocol`: Match the protocol of the packet.
 * `icmp_type`: Match the ICMP type, when using ICMP protocol.
 * `source`: Match the IP address of the source of the packet.
