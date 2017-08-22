@@ -31,8 +31,8 @@ ip6tables -t filter -A INPUT -m conntrack --ctstate INVALID -j DROP
 {% endif %}
 {% if firewall_ipv6_input_allow_localhost %}
 
-# Accept traffic from loopback interface (localhost)
-ip6tables -t filter -A INPUT -i lo -s ::1/128 -d ::1/128 -j ACCEPT
+# Accept traffic to loopback interface (localhost)
+ip6tables -t filter -A INPUT -i lo -j ACCEPT
 {% endif %}
 {% if firewall_ipv6_input_allow_icmp_ping %}
 
@@ -198,6 +198,11 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
+{% if firewall_ipv6_output_allow_localhost %}
+
+# Accept traffic from loopback interface (localhost)
+ip6tables -t filter -A OUTPUT -o lo -j ACCEPT
+{% endif %}
 {% if firewall_ipv6_output_allow_icmp_ping %}
 
 # Accept icmp ping requests

@@ -65,7 +65,7 @@ Disallow incoming connections with invalid state.
     firewall_ipv4_input_allow_localhost: True
     firewall_ipv6_input_allow_localhost: True
 
-Allow incoming connections from and to localhost.
+Allow incoming connections to localhost.
 
     firewall_ipv4_input_allow_icmp_ping: False
     firewall_ipv6_input_allow_icmp_ping: False
@@ -86,6 +86,11 @@ Log all the incoming connections that does not match any rule.
     firewall_ipv6_forward_allow_established: False
 
 Allow forwarding connections with an established or related state.
+
+    firewall_ipv4_output_allow_localhost: True
+    firewall_ipv6_output_allow_localhost: True
+
+Allow incoming connections from localhost.
 
     firewall_ipv4_output_allow_icmp_ping: False
     firewall_ipv6_output_allow_icmp_ping: False

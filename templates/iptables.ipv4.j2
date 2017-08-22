@@ -31,8 +31,8 @@ iptables -t filter -A INPUT -m conntrack --ctstate INVALID -j DROP
 {% endif %}
 {% if firewall_ipv4_input_allow_localhost %}
 
-# Accept traffic from loopback interface (localhost)
-iptables -t filter -A INPUT -i lo -s 127.0.0.0/8 -d 127.0.0.0/8 -j ACCEPT
+# Accept traffic to loopback interface (localhost)
+iptables -t filter -A INPUT -i lo -j ACCEPT
 {% endif %}
 {% if firewall_ipv4_input_allow_icmp_ping %}
 
@@ -198,6 +198,11 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
+{% if firewall_ipv4_output_allow_localhost %}
+
+# Accept traffic from loopback interface (localhost)
+iptables -t filter -A OUTPUT -o lo -j ACCEPT
+{% endif %}
 {% if firewall_ipv4_output_allow_icmp_ping %}
 
 # Accept icmp ping requests
