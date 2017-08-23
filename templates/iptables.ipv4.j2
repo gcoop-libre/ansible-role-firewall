@@ -54,6 +54,13 @@ iptables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_drop | default(False) %}
@@ -80,7 +87,7 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -88,7 +95,7 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -136,6 +143,13 @@ iptables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCE
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_drop | default(False) %}
@@ -162,7 +176,7 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -170,7 +184,7 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -228,6 +242,13 @@ iptables -t filter -A OUTPUT -p icmp --icmp-type redirect -j DROP
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_drop | default(False) %}
@@ -254,7 +275,7 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -262,7 +283,7 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -300,6 +321,13 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_drop | default(False) %}
@@ -326,7 +354,7 @@ iptables -t filter -A {{ rule.chain -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -334,7 +362,7 @@ iptables -t filter -A {{ rule.chain -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -382,6 +410,13 @@ iptables -t nat -A PREROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACCE
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_dnat | default(False) %}
@@ -408,7 +443,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -416,7 +451,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -457,6 +492,13 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_dnat | default(False) %}
@@ -483,7 +525,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -491,7 +533,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -537,6 +579,13 @@ iptables -t nat -A POSTROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACC
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_masquerade | default(False) %}
@@ -563,7 +612,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -571,7 +620,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -612,6 +661,13 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_dnat | default(False) %}
@@ -642,7 +698,7 @@ iptables -t nat -A {{ rule.chain -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -650,7 +706,7 @@ iptables -t nat -A {{ rule.chain -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}

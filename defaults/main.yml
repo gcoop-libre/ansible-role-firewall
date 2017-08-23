@@ -54,6 +54,12 @@ firewall_ipv4_rules_host: []
 #         - 80
 #         - 443
 #       state_new: True (default)
+#       state_established: False (default)
+#       state_related: False (default)
+#       state_untracked: False (default)
+#       state_snat: False (default)
+#       state_dnat: False (default)
+#       state_invalid: False (default)
 #       limit: 5/m
 #       limit_burst: 10
 #       target_accept: True (default)
@@ -136,6 +142,12 @@ firewall_ipv6_rules_host: []
 #         - 80
 #         - 443
 #       state_new: True (default)
+#       state_established: False (default)
+#       state_related: False (default)
+#       state_untracked: False (default)
+#       state_snat: False (default)
+#       state_dnat: False (default)
+#       state_invalid: False (default)
 #       limit: 5/m
 #       limit_burst: 10
 #       target_accept: True (default)

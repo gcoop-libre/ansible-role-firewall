@@ -184,6 +184,12 @@ Each variable is a list of dictionaries, which should have the structure showed 
               - 80
               - 443
             state_new: True
+            state_established: False
+            state_related: False
+            state_untracked: False
+            state_snat: False
+            state_dnat: False
+            state_invalid: False
             limit: 5/m
             limit_burst: 10
             target_accept: True
@@ -229,6 +235,12 @@ Each variable is a list of dictionaries, which should have the structure showed 
 * `destination_port`: Match the destination port of the packet.
 * `destination_ports`: Match the destination port of the packet against multiple values.
 * `state_new`: Match the state of the packet. It should be NEW.
+* `state_established`: Match the state of the packet. It should be ESTABLISHED.
+* `state_related`: Match the state of the packet. It should be RELATED.
+* `state_untracked`: Match the state of the packet. It should be UNTRACKED.
+* `state_snat`: Match the state of the packet. It should be SNAT.
+* `state_dnat`: Match the state of the packet. It should be DNAT.
+* `state_invalid`: Match the state of the packet. It should be INVALID.
 * `limit`: When using the LOG target, limit the matching rate of the rule.
 * `limit_burst`: When using the LOG target, maximum initial number of packets to match against the rule.
 * `target_accept`: Jump to the ACCEPT target. Let's the packet pass through the chain.
