@@ -208,6 +208,11 @@ iptables -t filter -A OUTPUT -o lo -j ACCEPT
 # Accept icmp ping requests
 iptables -t filter -A OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT
 {% endif %}
+{% if firewall_ipv4_output_allow_established %}
+
+# Allow established connections
+iptables -t filter -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+{% endif %}
 {% if firewall_ipv4_output_disallow_icmp_redirect %}
 
 # Drop icmp redirect responses

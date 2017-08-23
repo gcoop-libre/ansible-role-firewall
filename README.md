@@ -102,6 +102,11 @@ Allow outgoing ping responses.
 
 Disallow outgoing ICMP redirect responses.
 
+    firewall_ipv4_output_allow_established: True
+    firewall_ipv6_output_allow_established: True
+
+Allow outgoing connections with an established or related state.
+
     firewall_ipv4_nat_prerouting_allow_established: False
     firewall_ipv6_nat_prerouting_allow_established: False
 

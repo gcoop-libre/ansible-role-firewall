@@ -1,7 +1,7 @@
 #!/bin/sh
 # {{ ansible_managed }}
-
 {% if firewall_ipv6_rules_flush %}
+
 # Flush rules & delete user-defined chains
 ip6tables -t filter -F
 ip6tables -t filter -X
@@ -207,6 +207,11 @@ ip6tables -t filter -A OUTPUT -o lo -j ACCEPT
 
 # Accept icmp ping requests
 ip6tables -t filter -A OUTPUT -p icmpv6 --icmpv6-type echo-reply -j ACCEPT
+{% endif %}
+{% if firewall_ipv6_output_allow_established %}
+
+# Allow established connections
+ip6tables -t filter -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
 {% if firewall_ipv6_output_disallow_icmp_redirect %}
 

@@ -14,6 +14,7 @@ firewall_ipv4_input_log_disallowed: True
 firewall_ipv4_forward_allow_established: False
 firewall_ipv4_output_allow_localhost: True
 firewall_ipv4_output_allow_icmp_ping: False
+firewall_ipv4_output_allow_established: True
 firewall_ipv4_output_disallow_icmp_redirect: True
 firewall_ipv4_nat_prerouting_allow_established: False
 firewall_ipv4_nat_postrouting_allow_established: False
@@ -95,6 +96,7 @@ firewall_ipv6_input_log_disallowed: True
 firewall_ipv6_forward_allow_established: False
 firewall_ipv6_output_allow_localhost: True
 firewall_ipv6_output_allow_icmp_ping: False
+firewall_ipv6_output_allow_established: True
 firewall_ipv6_output_disallow_icmp_redirect: True
 firewall_ipv6_nat_prerouting_allow_established: False
 firewall_ipv6_nat_postrouting_allow_established: False
