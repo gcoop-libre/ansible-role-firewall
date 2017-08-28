@@ -8,4 +8,4 @@
   notify: persist rules
 
 - name: persist rules
-  command: netfilter-persistent save
+  command: "{{ firewall_persist_command }}"
