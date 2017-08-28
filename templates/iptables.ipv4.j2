@@ -15,7 +15,7 @@ iptables -t mangle -X
 {% if firewall_ipv4_chains %}
 
 # Create custom chains
-{% for key, chain in firewall_ipv4_chains.iteritems() %}
+{% for key, chain in firewall_ipv4_chains | dictsort %}
 iptables -t {{ chain.table | default('filter') }} -N {{ chain.name }}
 {% endfor %}
 {% endif %}
@@ -44,7 +44,7 @@ iptables -t filter -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
 # Allow established connections
 iptables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
-{% for group, rules in firewall_ipv4_rules.iteritems() %}
+{% for group, rules in firewall_ipv4_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'input' %}
@@ -133,7 +133,7 @@ iptables -t filter -A INPUT -m limit --limit 15/minute -j LOG --log-level 7 --lo
 # Allow established connections
 iptables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
-{% for group, rules in firewall_ipv4_rules.iteritems() %}
+{% for group, rules in firewall_ipv4_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'forward' %}
@@ -232,7 +232,7 @@ iptables -t filter -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEP
 # Drop icmp redirect responses
 iptables -t filter -A OUTPUT -p icmp --icmp-type redirect -j DROP
 {% endif %}
-{% for group, rules in firewall_ipv4_rules.iteritems() %}
+{% for group, rules in firewall_ipv4_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'output' %}
@@ -311,7 +311,7 @@ iptables -t filter -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
-{% for group, rules in firewall_ipv4_rules.iteritems() %}
+{% for group, rules in firewall_ipv4_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower not in ['input', 'forward', 'output'] %}
@@ -400,7 +400,7 @@ iptables -t nat -P POSTROUTING ACCEPT
 # Allow established connections
 iptables -t nat -A PREROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
-{% for group, rules in firewall_ipv4_rules.iteritems() %}
+{% for group, rules in firewall_ipv4_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'prerouting' %}
@@ -482,7 +482,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
-{% for group, rules in firewall_ipv4_rules.iteritems() %}
+{% for group, rules in firewall_ipv4_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'output' %}
@@ -569,7 +569,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 # Allow established connections
 iptables -t nat -A POSTROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
-{% for group, rules in firewall_ipv4_rules.iteritems() %}
+{% for group, rules in firewall_ipv4_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'postrouting' %}
@@ -651,7 +651,7 @@ iptables -t nat -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
-{% for group, rules in firewall_ipv4_rules.iteritems() %}
+{% for group, rules in firewall_ipv4_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower not in ['prerouting', 'output', 'postrouting'] %}
