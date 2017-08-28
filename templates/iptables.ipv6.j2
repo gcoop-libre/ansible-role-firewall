@@ -1,7 +1,7 @@
 #!/bin/sh
 # {{ ansible_managed }}
-
 {% if firewall_ipv6_rules_flush %}
+
 # Flush rules & delete user-defined chains
 ip6tables -t filter -F
 ip6tables -t filter -X
@@ -15,7 +15,7 @@ ip6tables -t mangle -X
 {% if firewall_ipv6_chains %}
 
 # Create custom chains
-{% for key, chain in firewall_ipv6_chains.iteritems() %}
+{% for key, chain in firewall_ipv6_chains | dictsort %}
 ip6tables -t {{ chain.table | default('filter') }} -N {{ chain.name }}
 {% endfor %}
 {% endif %}
@@ -31,8 +31,8 @@ ip6tables -t filter -A INPUT -m conntrack --ctstate INVALID -j DROP
 {% endif %}
 {% if firewall_ipv6_input_allow_localhost %}
 
-# Accept traffic from loopback interface (localhost)
-ip6tables -t filter -A INPUT -i lo -s ::1/128 -d ::1/128 -j ACCEPT
+# Accept traffic to loopback interface (localhost)
+ip6tables -t filter -A INPUT -i lo -j ACCEPT
 {% endif %}
 {% if firewall_ipv6_input_allow_icmp_ping %}
 
@@ -44,7 +44,7 @@ ip6tables -t filter -A INPUT -p icmpv6 --icmpv6-type echo-request -j ACCEPT
 # Allow established connections
 ip6tables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
-{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% for group, rules in firewall_ipv6_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'input' %}
@@ -54,6 +54,13 @@ ip6tables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEP
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_drop | default(False) %}
@@ -80,7 +87,7 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -88,7 +95,7 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -126,7 +133,7 @@ ip6tables -t filter -A INPUT -m limit --limit 15/minute -j LOG --log-level 7 --l
 # Allow established connections
 ip6tables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
-{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% for group, rules in firewall_ipv6_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'forward' %}
@@ -136,6 +143,13 @@ ip6tables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACC
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_drop | default(False) %}
@@ -162,7 +176,7 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -170,7 +184,7 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -198,17 +212,27 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
+{% if firewall_ipv6_output_allow_localhost %}
+
+# Accept traffic from loopback interface (localhost)
+ip6tables -t filter -A OUTPUT -o lo -j ACCEPT
+{% endif %}
 {% if firewall_ipv6_output_allow_icmp_ping %}
 
 # Accept icmp ping requests
 ip6tables -t filter -A OUTPUT -p icmpv6 --icmpv6-type echo-reply -j ACCEPT
+{% endif %}
+{% if firewall_ipv6_output_allow_established %}
+
+# Allow established connections
+ip6tables -t filter -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
 {% if firewall_ipv6_output_disallow_icmp_redirect %}
 
 # Drop icmp redirect responses
 ip6tables -t filter -A OUTPUT -p icmpv6 --icmpv6-type redirect -j DROP
 {% endif %}
-{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% for group, rules in firewall_ipv6_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower == 'output' %}
@@ -218,6 +242,13 @@ ip6tables -t filter -A OUTPUT -p icmpv6 --icmpv6-type redirect -j DROP
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_drop | default(False) %}
@@ -244,7 +275,7 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -252,7 +283,7 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -280,7 +311,7 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
-{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% for group, rules in firewall_ipv6_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'filter' and rule.chain | lower not in ['input', 'forward', 'output'] %}
@@ -290,6 +321,13 @@ ip6tables -t filter -A {{ rule.chain | upper -}}
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_drop | default(False) %}
@@ -316,7 +354,7 @@ ip6tables -t filter -A {{ rule.chain -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -324,7 +362,7 @@ ip6tables -t filter -A {{ rule.chain -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -362,7 +400,7 @@ ip6tables -t nat -P POSTROUTING ACCEPT
 # Allow established connections
 ip6tables -t nat -A PREROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
-{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% for group, rules in firewall_ipv6_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'prerouting' %}
@@ -372,6 +410,13 @@ ip6tables -t nat -A PREROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACC
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_dnat | default(False) %}
@@ -398,7 +443,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -406,7 +451,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -437,7 +482,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
-{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% for group, rules in firewall_ipv6_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'output' %}
@@ -447,6 +492,13 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_dnat | default(False) %}
@@ -473,7 +525,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -481,7 +533,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -517,7 +569,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 # Allow established connections
 ip6tables -t nat -A POSTROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 {% endif %}
-{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% for group, rules in firewall_ipv6_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower == 'postrouting' %}
@@ -527,6 +579,13 @@ ip6tables -t nat -A POSTROUTING -m conntrack --ctstate ESTABLISHED,RELATED -j AC
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_masquerade | default(False) %}
@@ -553,7 +612,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -561,7 +620,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}
@@ -592,7 +651,7 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% endif %}
 {% endfor %}
 {% endfor %}
-{% for group, rules in firewall_ipv6_rules.iteritems() %}
+{% for group, rules in firewall_ipv6_rules | dictsort %}
 {% set rule_number = [0] %}
 {% for rule in rules %}
 {% if rule.table | default('filter') | lower == 'nat' and rule.chain | lower not in ['prerouting', 'output', 'postrouting'] %}
@@ -602,6 +661,13 @@ ip6tables -t nat -A {{ rule.chain | upper -}}
 {% endif %}
 {% if rule_number.append(rule_number.pop() + 1) %}{% endif %}
 ## Rule Nr. {{ rule_number[0] }}
+{% set rule_states = ((rule.state_new | default(True)) | ternary(['NEW'], [])) %}
+{% set rule_states = rule_states + ((rule.state_established | default(False)) | ternary(['ESTABLISHED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_related | default(False)) | ternary(['RELATED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_untracked | default(False)) | ternary(['UNTRACKED'], [])) %}
+{% set rule_states = rule_states + ((rule.state_snat | default(False)) | ternary(['SNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_dnat | default(False)) | ternary(['DNAT'], [])) %}
+{% set rule_states = rule_states + ((rule.state_invalid | default(False)) | ternary(['INVALID'], [])) %}
 {% if rule.target_custom | default('') | length > 0 %}
 {% set rule_target = rule.target_custom %}
 {% elif rule.target_dnat | default(False) %}
@@ -632,7 +698,7 @@ ip6tables -t nat -A {{ rule.chain -}}
 {% if rule.destinations is defined %} -d {{ rule.destinations | join(',') }}{% endif %}
 {% if rule.protocol is defined %}
  -p {{ rule.protocol | lower -}}
-{% if rule.protocol | lower == 'tcp' %} --syn{% endif %}
+{% if (rule.protocol | lower == 'tcp') and (rule_states | length == 1) and (rule.state_new | default(True)) %} --syn{% endif %}
 {% if rule.protocol | lower == 'icmp' and rule.icmp_type is defined %} --icmp-type {{ rule.icmp_type }}{% endif %}
 {% if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
 {% if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
@@ -640,7 +706,7 @@ ip6tables -t nat -A {{ rule.chain -}}
 {% if rule.source_ports is defined %} --sports {{ rule.source_ports | join(',') }}{% endif %}
 {% if rule.destination_ports is defined %} --dports {{ rule.destination_ports | join(',') }}{% endif %}
 {% endif %}
-{% if rule.state_new | default(True) %} -m conntrack --ctstate NEW{% endif %}
+{% if rule_states | length > 0 %} -m conntrack --ctstate {{ rule_states | join(',') }}{% endif %}
 {% if rule.target_log | default(False) %}
 {% if rule.limit is defined or rule.limit_burst is defined %} -m limit{% endif%}
 {% if rule.limit is defined %} --limit {{ rule.limit }}{% endif %}

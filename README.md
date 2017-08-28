@@ -65,7 +65,7 @@ Disallow incoming connections with invalid state.
     firewall_ipv4_input_allow_localhost: True
     firewall_ipv6_input_allow_localhost: True
 
-Allow incoming connections from and to localhost.
+Allow incoming connections to localhost.
 
     firewall_ipv4_input_allow_icmp_ping: False
     firewall_ipv6_input_allow_icmp_ping: False
@@ -87,6 +87,11 @@ Log all the incoming connections that does not match any rule.
 
 Allow forwarding connections with an established or related state.
 
+    firewall_ipv4_output_allow_localhost: True
+    firewall_ipv6_output_allow_localhost: True
+
+Allow incoming connections from localhost.
+
     firewall_ipv4_output_allow_icmp_ping: False
     firewall_ipv6_output_allow_icmp_ping: False
 
@@ -96,6 +101,11 @@ Allow outgoing ping responses.
     firewall_ipv6_output_disallow_icmp_redirect: True
 
 Disallow outgoing ICMP redirect responses.
+
+    firewall_ipv4_output_allow_established: True
+    firewall_ipv6_output_allow_established: True
+
+Allow outgoing connections with an established or related state.
 
     firewall_ipv4_nat_prerouting_allow_established: False
     firewall_ipv6_nat_prerouting_allow_established: False
@@ -174,6 +184,12 @@ Each variable is a list of dictionaries, which should have the structure showed 
               - 80
               - 443
             state_new: True
+            state_established: False
+            state_related: False
+            state_untracked: False
+            state_snat: False
+            state_dnat: False
+            state_invalid: False
             limit: 5/m
             limit_burst: 10
             target_accept: True
@@ -207,7 +223,7 @@ Each variable is a list of dictionaries, which should have the structure showed 
 * `table`: Table for the rule. `filter`, `nat`, `filter`, `mangle`, etc. Default: `filter`.
 * `chain`: Chain where the rule will be evaluated. `input`, `output`, `postrouting`, custom chain.
 * `interface_in`: Match rule against the network interface through which the packet arrives.
-* `interface_out`: Match rule against the network interface through which the packet exists the host.r
+* `interface_out`: Match rule against the network interface through which the packet exists the host.
 * `protocol`: Match the protocol of the packet.
 * `icmp_type`: Match the ICMP type, when using ICMP protocol.
 * `source`: Match the IP address of the source of the packet.
@@ -219,6 +235,12 @@ Each variable is a list of dictionaries, which should have the structure showed 
 * `destination_port`: Match the destination port of the packet.
 * `destination_ports`: Match the destination port of the packet against multiple values.
 * `state_new`: Match the state of the packet. It should be NEW.
+* `state_established`: Match the state of the packet. It should be ESTABLISHED.
+* `state_related`: Match the state of the packet. It should be RELATED.
+* `state_untracked`: Match the state of the packet. It should be UNTRACKED.
+* `state_snat`: Match the state of the packet. It should be SNAT.
+* `state_dnat`: Match the state of the packet. It should be DNAT.
+* `state_invalid`: Match the state of the packet. It should be INVALID.
 * `limit`: When using the LOG target, limit the matching rate of the rule.
 * `limit_burst`: When using the LOG target, maximum initial number of packets to match against the rule.
 * `target_accept`: Jump to the ACCEPT target. Let's the packet pass through the chain.

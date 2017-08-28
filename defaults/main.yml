@@ -12,7 +12,9 @@ firewall_ipv4_input_allow_icmp_ping: False
 firewall_ipv4_input_allow_established: True
 firewall_ipv4_input_log_disallowed: True
 firewall_ipv4_forward_allow_established: False
+firewall_ipv4_output_allow_localhost: True
 firewall_ipv4_output_allow_icmp_ping: False
+firewall_ipv4_output_allow_established: True
 firewall_ipv4_output_disallow_icmp_redirect: True
 firewall_ipv4_nat_prerouting_allow_established: False
 firewall_ipv4_nat_postrouting_allow_established: False
@@ -52,6 +54,12 @@ firewall_ipv4_rules_host: []
 #         - 80
 #         - 443
 #       state_new: True (default)
+#       state_established: False (default)
+#       state_related: False (default)
+#       state_untracked: False (default)
+#       state_snat: False (default)
+#       state_dnat: False (default)
+#       state_invalid: False (default)
 #       limit: 5/m
 #       limit_burst: 10
 #       target_accept: True (default)
@@ -92,7 +100,9 @@ firewall_ipv6_input_allow_icmp_ping: False
 firewall_ipv6_input_allow_established: True
 firewall_ipv6_input_log_disallowed: True
 firewall_ipv6_forward_allow_established: False
+firewall_ipv6_output_allow_localhost: True
 firewall_ipv6_output_allow_icmp_ping: False
+firewall_ipv6_output_allow_established: True
 firewall_ipv6_output_disallow_icmp_redirect: True
 firewall_ipv6_nat_prerouting_allow_established: False
 firewall_ipv6_nat_postrouting_allow_established: False
@@ -132,6 +142,12 @@ firewall_ipv6_rules_host: []
 #         - 80
 #         - 443
 #       state_new: True (default)
+#       state_established: False (default)
+#       state_related: False (default)
+#       state_untracked: False (default)
+#       state_snat: False (default)
+#       state_dnat: False (default)
+#       state_invalid: False (default)
 #       limit: 5/m
 #       limit_burst: 10
 #       target_accept: True (default)
