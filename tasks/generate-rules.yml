@@ -42,8 +42,7 @@
   when: firewall_ipv4_configure
 
 - name: "IPv4 Chains: Add firewall_ipv4_rules"
-  include: generate-ipv4-chains.yml
-  static: false
+  include_tasks: generate-ipv4-chains.yml
   vars:
     group: "{{ group_rules.key }}"
     rules: "{{ group_rules.value }}"
@@ -96,8 +95,7 @@
   when: firewall_ipv6_configure
 
 - name: "IPv6 Chains: Add firewall_ipv6_rules"
-  include: generate-ipv6-chains.yml
-  static: false
+  include_tasks: generate-ipv6-chains.yml
   vars:
     group: "{{ group_rules.key }}"
     rules: "{{ group_rules.value }}"
@@ -107,5 +105,5 @@
     label: "{{ group_rules.key }}"
   when: firewall_ipv6_configure and firewall_ipv6_rules | length > 0
 
-- include: iptables-generate-rules.yml
+- include_tasks: iptables-generate-rules.yml
   when: firewall_application == 'iptables'
